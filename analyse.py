@@ -28,7 +28,9 @@ def plot_section(X, means, devs, t_start, t_end):
     plt.show()
 
 
-if __name__ == '__main__':
-    m, d = get_means_devs(prices, 100)
-    pkl.dump(m, open('100m.pkl', 'wb'))
-    pkl.dump(d, open('100d.pkl', 'wb'))
+def generate_data():
+    windows = (np.arange(9)+np.ones([9]))*10
+    windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*100))
+    windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*1000))
+    return dict(zip(windows, [get_means_devs(prices, w)
+                              for w in windows]))

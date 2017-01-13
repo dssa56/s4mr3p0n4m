@@ -20,11 +20,11 @@ def get_means_devs(X, window_len):
     return np.array(means), np.array(devs)
 
 
-def plot_section(X, means, devs, t_start, t_end):
+def plot_section(X, means, devs, t_start, t_end, fac):
     plt.plot(times[t_start: t_end], prices[t_start: t_end])
     plt.plot(times[t_start: t_end], means[t_start: t_end])
-    plt.plot(times[t_start: t_end], (means+devs)[t_start: t_end], c='blue')
-    plt.plot(times[t_start: t_end], (means-devs)[t_start: t_end], c='blue')
+    plt.plot(times[t_start: t_end], (means+devs*fac)[t_start: t_end], c='blue')
+    plt.plot(times[t_start: t_end], (means-devs*fac)[t_start: t_end], c='blue')
     plt.show()
 
 
@@ -35,3 +35,17 @@ def generate_data():
     return dict(zip(windows.astype(np.int_), [get_means_devs(prices, w)
                                               for w in windows.astype(np.int_)]
                     ))
+
+
+def lookahead(X, means, devs, fac, stride, skip):
+    lower_diffs = [X[i+stride+skip]-X[i+skip]
+                   for i in range(len(X)-stride-skip)
+                   if (X[i+skip] < (means[i+skip] - fac * devs[i+skip]))
+                   and not X[i-1+skip] < (means[i-1+skip]
+                                          - fac * devs[i-1+skip])]
+    upper_diffs = [X[i+stride+skip]-X[i+skip]
+                   for i in range(len(X)-stride-skip)
+                   if X[i+skip] > (means[i+skip] + fac * devs[i+skip])
+                   and not X[i-1+skip] > (means[i-1+skip]
+                                          + fac * devs[i-1+skip])]
+    return lower_diffs, upper_diffs

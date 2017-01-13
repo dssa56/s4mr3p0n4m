@@ -32,5 +32,6 @@ def generate_data():
     windows = (np.arange(9)+np.ones([9]))*10
     windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*100))
     windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*1000))
-    return dict(zip(windows, [get_means_devs(prices, w)
-                              for w in windows]))
+    return dict(zip(windows.astype(np.int_), [get_means_devs(prices, w)
+                                              for w in windows.astype(np.int_)]
+                    ))

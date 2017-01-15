@@ -51,22 +51,21 @@ def lookahead(X, means, devs, fac, stride, skip):
     return lower_diffs, upper_diffs
 
 
-def make_lookahead_array(prices, md_dict):
-    windows = (np.arange(9)+np.ones([9]))*10
-    windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*100))
-    windows = np.concatenate((windows, (np.arange(9)+np.ones([9]))*1000))
+def make_lookahead_array(prices, md_dict, w_om, s_om):
+    windows = (np.arange(9)+np.ones([9]))*w_om
     windows = windows.astype(np.int_)
 
-    strides = (np.arage(9) + np.ones([9]))
-    strides = np.concatenate((strides, (np.arange(9)+np.ones([9]))*10))
-    strides = np.concatenate((strides, (np.arange(9)+np.ones([9]))*100))
-    strides = np.concatenate((strides, (np.arange(9)+np.ones([9]))*1000))
+    strides = (np.arange(9) + np.ones([9]))*s_om
     strides = strides.astype(np.int_)
 
-    facs = [(i+1)*4/30 for i in range(len(30))]
+    facs = [(i+1)*4/30 for i in range(30)]
     return [((window, stride, fac),
              lookahead(prices, md_dict[window][0], md_dict[window][1],
-                       fac, stride, stride))
+                       fac, stride, window))
             for window in windows
             for fac in facs
             for stride in strides]
+
+
+def get_lha_stat(lha, stat):
+    return [(l[0], (stat(l[1][0]), stat(l[1][1]))) for l in lha]

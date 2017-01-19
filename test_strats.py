@@ -13,10 +13,7 @@ def test_getwin():
     i = 10
     while abs(p[i] - d[10][0][i - 10]) <= d[10][1][i - 10]:
         i += 1
-    if p[i] - d[10][0][i - 10] > 0:
         assert p[i] == w[0][0][0]
-    else:
-        assert p[i] == w[1][0][0]
 
 
 def test_strats():

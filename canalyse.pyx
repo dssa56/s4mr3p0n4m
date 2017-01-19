@@ -12,6 +12,7 @@ def get_means_devs(double[:] prices, int window):
         devs[i] = np.sqrt(st.moment(prices[i : window + i], moment=2))
     return means, devs
 
+
 def generate_data(double[:] prices):
     windows = (np.arange(9) + np.ones([9])) * 10
     windows = np.concatenate((windows, (np.arange(9) + np.ones([9])) * 100))

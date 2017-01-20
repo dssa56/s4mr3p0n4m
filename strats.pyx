@@ -42,8 +42,12 @@ def apply_strat_b(double[:] window, double mean, double dev,
     return window[-1] / window[0] * money
 
 
-def strat(prices, md_dict, md_window, st_window, fact, a_sl, a_sg, b_sl, b_sg,
+def strat(x, prices, md_dict, md_window, st_window, fact,
           money, opt):
+    a_sl = x[0]
+    a_sg = x[1]
+    b_sl = x[0]
+    b_sg = x[1]
     means = md_dict[md_window][0]
     devs = md_dict[md_window][1]
     w, ms, ds, ab = get_windows(prices[md_window:],
@@ -55,7 +59,7 @@ def strat(prices, md_dict, md_window, st_window, fact, a_sl, a_sg, b_sl, b_sg,
                 money = apply_strat_a(w[i], ms[i], ds[i], a_sl, a_sg, money)
             else:
                 money = apply_strat_b(w[i], ms[i], ds[i], b_sl, b_sg, money)
-        return money
+        return 1/money
     else:
         record = []
         for i in range(len(w)):

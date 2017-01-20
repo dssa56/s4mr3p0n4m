@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import seaborn
 
 
-prices = pkl.load(open('ends.pkl', 'rb'))
-times = pkl.load(open('times.pkl', 'rb'))
+prices = pkl.load(open('ends_16.pkl', 'rb'))
+times = pkl.load(open('times_16.pkl', 'rb'))
 
 
 def get_means_devs(X, window_len):

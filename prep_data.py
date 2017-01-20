@@ -3,9 +3,9 @@ import numpy as np
 import re
 import pickle as pkl
 
-dpm_ly = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+dpm_ly = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-data_path = 'DAT_ASCII_EURUSD_M1_2016.csv'
+data_path = 'DAT_ASCII_EURUSD_M1_2015.csv'
 
 df = pd.read_csv(data_path, sep=';')
 
@@ -16,7 +16,7 @@ ends = np.array(df.end.tolist())
 
 def convert_dt(dt):
     dt_li = dt.split()
-    month_day = re.sub('2016', '', dt_li[0])
+    month_day = re.sub('2015', '', dt_li[0])
     mins = np.cumsum(dpm_ly)[int(month_day[:2]) - 1] * 1440
     mins += (int(month_day[2:]) - 1) * 1440
     mins += int(dt_li[1][:2]) * 60 + int(dt_li[1][2:4])
@@ -36,5 +36,5 @@ def segment(times, x):
 
 df.date_time = df.date_time.apply(convert_dt)
 times = np.array(df.date_time.tolist())
-pkl.dump(ends, open('ends.pkl', 'wb'))
-pkl.dump(times, open('times.pkl', 'wb'))
+pkl.dump(ends, open('ends_15.pkl', 'wb'))
+pkl.dump(times, open('times_15.pkl', 'wb'))

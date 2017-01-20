@@ -1,3 +1,5 @@
+import numpy as np
+
 def get_windows(double[:] prices, double[:] means, double[:] devs, int win,
                 double fact):
     cdef:
@@ -42,30 +44,71 @@ def apply_strat_b(double[:] window, double mean, double dev,
     return window[-1] / window[0] * money
 
 
-def strat(x, prices, md_dict, md_window, st_window, fact,
-          money, opt):
+def opt_strat(x, prices, md_dict, md_window, st_window, fact, samples, rdn):
     a_sl = x[0]
     a_sg = x[1]
-    b_sl = x[0]
-    b_sg = x[1]
+    b_sl = x[2]
+    b_sg = x[3]
+    means = md_dict[md_window][0]
+    devs = md_dict[md_window][1]
+    w, ms, ds, ab = get_windows(prices[md_window:],
+                                means, devs, st_window, fact)
+    if not rdn:
+        samples = len(w)
+    si = np.random.choice(np.arange(len(w)), samples)
+    cdef int i
+    money = np.empty([len(si)], np.float64)
+    for i in range(len(si)):
+        if ab[si[i]] == 1:
+            money[i] = apply_strat_a(w[si[i]], ms[si[i]], ds[si[i]],
+                                  a_sl, a_sg, 1.0)
+        else:
+            money[i] = apply_strat_b(w[si[i]], ms[si[i]], ds[si[i]],
+                                  b_sl, b_sg, 1.0)
+    return 1/money.sum()
+
+
+def strat(x, prices, md_dict, md_window, st_window, fact, s_len,
+          loss_tol):
+    a_sl = x[0]
+    a_sg = x[1]
+    b_sl = x[2]
+    b_sg = x[3]
     means = md_dict[md_window][0]
     devs = md_dict[md_window][1]
     w, ms, ds, ab = get_windows(prices[md_window:],
                                 means, devs, st_window, fact)
     cdef int i
-    if opt:
-        for i in range(len(w)):
-            if ab == 1:
-                money = apply_strat_a(w[i], ms[i], ds[i], a_sl, a_sg, money)
+    cdef int j
+    cdef double money = 1.0
+    record = []
+    s = np.empty([s_len], np.float64)
+    for i in range(s_len):
+        old_money = money
+        if ab[i] == 1:
+            money = apply_strat_a(w[i], ms[i], ds[i], a_sl, a_sg, money)
+        else:
+            money = apply_strat_b(w[i], ms[i], ds[i], b_sl, b_sg, money)
+        record.append(money)
+        s[i] = 1 if money - old_money < 0 else 0
+    for i in range(len(w) - s_len):
+        i += s_len
+        for j in range(s_len - 1):
+          s[j] = s[j + 1]
+        if sum(s) / s_len > loss_tol:
+            if ab[i] == 1:
+                s[-1] = (1 if apply_strat_a(w[i], ds[i], a_sl, a_sg, 1.0) < 1.0
+                        else 0)
             else:
-                money = apply_strat_b(w[i], ms[i], ds[i], b_sl, b_sg, money)
-        return 1/money
-    else:
-        record = []
-        for i in range(len(w)):
-            if ab == 1:
+                s[-1] = (1 if apply_strat_b(w[i], ds[i], b_sl, b_sg, 1.0) < 1.0
+                        else 0)
+        else:
+            old_money = money
+            if ab[i] == 1:
                 money = apply_strat_a(w[i], ms[i], ds[i], a_sl, a_sg, money)
             else:
                 money = apply_strat_b(w[i], ms[i], ds[i], b_sl, b_sg, money)
             record.append(money)
-        return record
+            s[-1] = 1 if money - old_money < 0 else 0
+
+    return record

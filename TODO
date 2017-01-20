@@ -1,2 +1,6 @@
 Make sure that def doesn't accrue significant overhead vs cdef unless
 the fn is called many times.
+
+Look into different optimisation algos than powell.
+
+Refactor!!

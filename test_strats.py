@@ -28,12 +28,29 @@ def test_getwin():
     assert ab[1] == 0
 
 
-def test_strats():
+def test_apply_strats():
     win = np.array([1, 1, 1, 2, 3, 6, 7, 0]).astype(np.float64)
-    assert st.apply_strat_b(win, 1, 1, 3, -3, 100) == 600
+    assert st.wrap_apply_strat_b(win, 1, 1, 3, -3, 100) == 600
     win = np.array([10, 10, 9, 8, 7, 3, 1]).astype(np.float64)
-    assert st.apply_strat_b(win, 9, 2, 0.99, -1, 10) == 7
+    assert st.wrap_apply_strat_b(win, 9, 2, 0.99, -1, 10) == 7
     win = np.array([3, 3, 2.5, 2, 1, 1]).astype(np.float64)
-    assert st.apply_strat_a(win, 3, 1.5, 1, -1, 30) == 90
+    assert st.wrap_apply_strat_a(win, 3, 1.5, 1, -1, 30) == 90
     win = np.array([3, 4, 4.5, 5, 7, 10, 9]).astype(np.float64)
-    assert st.apply_strat_a(win, 2, 2, 3, 0, 1) == 3 / 10
+    assert st.wrap_apply_strat_a(win, 2, 2, 3, 0, 1) == 3 / 10
+
+
+def test_loss():
+    s = np.array(
+        [1.2, 1.1, 0.99, 0.7, 1.0, -0.6, 1.3, 1.2, 1.9]).astype(np.float64)
+    assert st.wrap_get_loss(s, 3, 3) == 1
+    s = np.array(
+        [0.7, 0.12, 1.4, 2.4, 0.1, 2.0, 1.3, 1.7]).astype(np.float64)
+    assert st.wrap_get_loss(s, 2, 4) == 2
+
+
+def test_strat():
+    s = np.array(
+        [1, 1.2, 1.4, 1.7, 0.3, 0.4,
+         0.2, 0.1, 1.1, 1.2, 1.3, 1.2, 1.3]).astype(np.float64)
+    assert all(st.strat([2, 2, 1], s) == np.cumprod([1, 1.2, 1.4, 1.7, 0.3,
+                                                     1.3]))

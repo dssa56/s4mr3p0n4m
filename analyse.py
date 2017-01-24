@@ -22,7 +22,7 @@ def get_means_devs(X, window_len):
 
 
 def plot_section(X, means, devs, t_start, t_end, fac):
-    plt.plot(times[t_start: t_end], prices[t_start: t_end])
+    plt.plot(times[t_start: t_end], X[t_start: t_end])
     plt.plot(times[t_start: t_end], means[t_start: t_end])
     plt.plot(times[t_start: t_end], (means + devs * fac)[t_start: t_end],
              c='blue')

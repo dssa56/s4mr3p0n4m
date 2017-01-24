@@ -53,7 +53,25 @@ def wrap_apply_strat_b(win, m, d, sl, sg, mn):
     return apply_strat_b(win, m, d, sl, sg, mn)
 
 
-cdef sl_sg(double prices, md_dict, int md_window, int st_window,
+cdef get_loss(double[:] s, int bl, int nb):
+    cdef int tot = 0
+    cdef double prod = 1
+    cdef int i
+    cdef int j
+    for i in range(nb):
+        for j in range(bl):
+            prod *= s[bl * i + j]
+        if prod < 1:
+            tot += 1
+        prod = 1
+    return tot
+
+
+def wrap_get_loss(s, bl, nb):
+    return get_loss(s, bl, nb)
+
+
+cdef sl_sg(double[:] prices, md_dict, int md_window, int st_window,
                double fact, double a_sl, double a_sg, double b_sl,
                double b_sg):
 
@@ -73,29 +91,10 @@ cdef sl_sg(double prices, md_dict, int md_window, int st_window,
     return money.sum()
 
 
-cdef get_loss(double[:] s, int bl, int nb):
-    cdef int tot = 0
-    cdef double prod = 1
-    cdef int i
-    cdef int j
-    for i in range(nb):
-        for j in range(bl):
-            prod *= s[bl * i + j]
-        if prod < 1:
-            tot += 1
-        prod = 1
-    return tot
+cdef get_diffs(double[:] prices, md_dict, int md_window, int st_window,
+               double fact, double a_sl, double a_sg, double b_sl,
+               double b_sg):
 
-
-def wrap_get_loss(s, bl, nb):
-    return get_loss(s, bl, nb)
-
-
-def get_diffs(x, prices, md_dict, md_window, st_window, fact):
-    a_sl = x[0]
-    a_sg = x[1]
-    b_sl = x[2]
-    b_sg = x[3]
     means = md_dict[md_window][0]
     devs = md_dict[md_window][1]
     w, ms, ds, ab = get_windows(prices[md_window:],
@@ -113,31 +112,43 @@ def get_diffs(x, prices, md_dict, md_window, st_window, fact):
     return money
 
 
-def opt_stop_prs(stop_params, double[:] x):
+def wrap_get_diffs(double[:] prices, md_dict, int md_window, int st_window,
+               double fact, double a_sl, double a_sg, double b_sl,
+               double b_sg):
+
+    return get_diffs(prices, md_dict, md_window, st_window,
+                   fact, a_sl, a_sg, b_sl, b_sg)
+
+
+cdef stop_prs(stop_params, double[:] x):
   cdef int n_bins = stop_params[0]
   cdef int bin_len = stop_params[1]
   cdef int loss_tol = stop_params[2]
-  l_s = n_bins * bin_len
+  cdef int l_s = n_bins * bin_len
   record = []
   cdef int i
   for i in range(l_s):
       record.append(x[i])
   for i in range(len(x) - l_s):
-      i += l_s
       if get_loss(x[i:i + l_s], bin_len, n_bins) < loss_tol:
-          record.append(x[i])
-  return 1 / np.prod(record)
+          record.append(x[i + l_s])
+  return np.prod(record)
+
+
+def opt_stop_prs(stop_params, double[:] x):
+    return 1 / stop_prs(stop_params, x)
 
 
 def strat(stop_params, x):
-    n_bins = stop_params[0]
-    bin_len = stop_params[1]
-    loss_tol = stop_params[2]
-    l_s = n_bins * bin_len
-    record = []
-    for i in range(l_s):
-        record.append(x[i])
-    for i in range(len(x) - l_s):
-        if get_loss(x[i:i + l_s], bin_len, n_bins) < loss_tol:
-            record.append(x[i + l_s])
-    return np.cumprod(record)
+  cdef int n_bins = stop_params[0]
+  cdef int bin_len = stop_params[1]
+  cdef int loss_tol = stop_params[2]
+  cdef int l_s = n_bins * bin_len
+  record = []
+  cdef int i
+  for i in range(l_s):
+      record.append(x[i])
+  for i in range(len(x) - l_s):
+      if get_loss(x[i:i + l_s], bin_len, n_bins) < loss_tol:
+          record.append(x[i + l_s])
+  return np.cumprod(record)

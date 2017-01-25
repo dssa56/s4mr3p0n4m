@@ -72,3 +72,26 @@ def make_lookahead_array(prices, md_dict, w_om, s_om):
 
 def get_lha_stat(lha, stat):
     return [(l[0], (stat(l[1][0]), stat(l[1][1]))) for l in lha]
+
+
+def plot_algo(x, sample, rlen, dlen, regs, devs, pot, record, train_samples):
+    plt.plot(train_samples[sample][rlen + dlen:])
+    plt.plot((regs + devs * x[0]), c='blue')
+    plt.plot((regs - devs * x[0]), c='blue')
+    plt.plot((regs + devs * x[1]), c='green')
+    plt.plot((regs - devs * x[1]), c='green')
+    plt.plot((regs + devs * x[2]), c='red')
+    plt.plot((regs - devs * x[2]), c='red')
+    plt.plot((regs + devs), c='yellow')
+    plt.plot((regs - devs), c='yellow')
+    plt.plot(regs, c='magenta')
+    for r in record:
+        if r[1] == 1:
+            plt.axvline(x=r[0], c='green')
+        elif r[1] == 0:
+            plt.axvline(x=r[0], c='green', ls='--')
+        elif r[1] == 3:
+            plt.axvline(x=r[0], c='red')
+        elif r[1] == 2:
+            plt.axvline(x=r[0], c='red', ls='--')
+    plt.show()

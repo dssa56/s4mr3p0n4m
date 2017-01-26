@@ -74,16 +74,16 @@ def get_lha_stat(lha, stat):
     return [(l[0], (stat(l[1][0]), stat(l[1][1]))) for l in lha]
 
 
-def plot_algo(x, sample, rlen, dlen, regs, devs, pot, record, train_samples):
-    plt.plot(train_samples[sample][rlen + dlen:])
-    plt.plot((regs + devs * x[0]), c='blue')
-    plt.plot((regs - devs * x[0]), c='blue')
-    plt.plot((regs + devs * x[1]), c='green')
-    plt.plot((regs - devs * x[1]), c='green')
-    plt.plot((regs + devs * x[2]), c='red')
-    plt.plot((regs - devs * x[2]), c='red')
-    plt.plot((regs + devs), c='yellow')
-    plt.plot((regs - devs), c='yellow')
+def plot_algo(x, sample, regs, record):
+    plt.plot(sample)
+    plt.plot((regs + x[0]), c='blue')
+    plt.plot((regs - x[0]), c='blue')
+    plt.plot((regs + x[1]), c='green')
+    plt.plot((regs - x[1]), c='green')
+    plt.plot((regs + x[2]), c='red')
+    plt.plot((regs - x[2]), c='red')
+    plt.plot((regs + x[3]), c='yellow')
+    plt.plot((regs - x[3]), c='yellow')
     plt.plot(regs, c='magenta')
     for r in record:
         if r[1] == 1:

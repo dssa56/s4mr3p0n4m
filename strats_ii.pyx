@@ -1,7 +1,10 @@
 import numpy as np
 
+global spread
+spread = 0.00015
+
 cdef inline check_upper_dev_sell(price, mean, dev_fact, dev_stoploss):
-    if price > mean + dev_stoploss:
+    if price > mean + dev_fact + dev_stoploss:
         return False
     if price > mean + dev_fact:
         return True
@@ -9,20 +12,20 @@ cdef inline check_upper_dev_sell(price, mean, dev_fact, dev_stoploss):
         return False
 
 
-cdef inline check_upper_dev_buy(price, mean, dev_stoploss,
+cdef inline check_upper_dev_buy(price, op, dev_stoploss,
                                 dev_takeprofit, time, dev_tmax):
     if time > dev_tmax:
         return True
-    if price > mean + dev_stoploss:
+    if price > op + dev_stoploss:
         return True
-    if price < mean + dev_takeprofit:
+    if price < op - dev_takeprofit:
         return True
     else:
         return False
 
 
 cdef inline check_upper_sr_sell(price, mean, sr_fact, sr_stoploss):
-    if price > mean + sr_stoploss:
+    if price > mean + sr_fact + sr_stoploss:
         return False
     if price > mean + sr_fact:
         return True
@@ -30,20 +33,20 @@ cdef inline check_upper_sr_sell(price, mean, sr_fact, sr_stoploss):
         return False
 
 
-cdef inline check_upper_sr_buy(price, mean, sr_stoploss, sr_takeprofit,
+cdef inline check_upper_sr_buy(price, op, sr_stoploss, sr_takeprofit,
                                 time, sr_tmax):
     if time > sr_tmax:
         return True
-    if price > mean + sr_stoploss:
+    if price > op + sr_stoploss:
         return True
-    if price < mean + sr_takeprofit:
+    if price < op - sr_takeprofit:
         return True
     else:
         return False
 
 
 cdef inline check_lower_dev_buy(price, mean, dev_fact, dev_stoploss):
-    if price < mean - dev_stoploss:
+    if price < mean - dev_fact - dev_stoploss:
         return False
     if price < mean - dev_fact:
         return True
@@ -51,20 +54,20 @@ cdef inline check_lower_dev_buy(price, mean, dev_fact, dev_stoploss):
         return False
 
 
-cdef inline check_lower_dev_sell(price, mean, dev_stoploss,
+cdef inline check_lower_dev_sell(price, op, dev_stoploss,
                                  dev_takeprofit, time, dev_tmax):
     if time > dev_tmax:
         return True
-    if price < mean - dev_stoploss:
+    if price < op - dev_stoploss:
         return True
-    if price > mean - dev_takeprofit:
+    if price > op + dev_takeprofit:
         return True
     else:
         return False
 
 
 cdef inline check_lower_sr_buy(price, mean, sr_fact, sr_stoploss):
-    if price < mean - sr_stoploss:
+    if price < mean - sr_fact - sr_stoploss:
       return False
     if price < mean - sr_fact:
         return True
@@ -72,13 +75,13 @@ cdef inline check_lower_sr_buy(price, mean, sr_fact, sr_stoploss):
         return False
 
 
-cdef inline check_lower_sr_sell(price, mean, sr_stoploss, sr_takeprofit,
+cdef inline check_lower_sr_sell(price, op, sr_stoploss, sr_takeprofit,
                                 time, sr_tmax):
     if time > sr_tmax:
         return True
-    if price < mean - sr_stoploss:
+    if price < op - sr_stoploss:
         return True
-    if price > mean - sr_takeprofit:
+    if price > op + sr_takeprofit:
         return True
     else:
         return False
@@ -95,11 +98,11 @@ cdef inline buy_lower_sr(sr_store, pot, price, mean, sr_bet, i):
 
 
 cdef inline sell_lower_dev(dev_store, price, pot):
-    return pot - dev_store[0] / price * dev_store[2]
+    return pot - dev_store[0] / price * dev_store[2] - spread
 
 
 cdef inline sell_lower_sr(sr_store, price, pot):
-    return pot - sr_store[0] / price * sr_store[2]
+    return pot - sr_store[0] / price * sr_store[2] - spread
 
 
 cdef inline sell_upper_dev(dev_store, pot, price, mean, dev_bet, i):
@@ -113,11 +116,11 @@ cdef inline sell_upper_sr(sr_store, pot, price, mean, sr_bet, i):
 
 
 cdef inline buy_upper_dev(dev_store, price, pot):
-    return pot + dev_store[0] / price * dev_store[2]
+    return pot + dev_store[0] / price * dev_store[2] - spread
 
 
 cdef inline buy_upper_sr(sr_store, price, pot):
-    return pot + sr_store[0] / price * sr_store[2]
+    return pot + sr_store[0] / price * sr_store[2] - spread
 
 
 def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
@@ -171,7 +174,7 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                 status = 1
                 continue
         if status == 1:
-            if check_upper_sr_buy(prices[i], sr_store[1],
+            if check_upper_sr_buy(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = buy_upper_sr(sr_store, prices[i], pot)
@@ -186,7 +189,7 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                 status = 3
                 continue
         if status == 2:
-            if check_upper_dev_buy(prices[i], dev_store[1],
+            if check_upper_dev_buy(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = buy_upper_dev(dev_store, prices[i], pot)
@@ -201,13 +204,13 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                 status = 3
                 continue
         if status == 3:
-            if check_upper_dev_buy(prices[i], dev_store[1],
+            if check_upper_dev_buy(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = buy_upper_dev(dev_store, prices[i], pot)
                 record.append((i, 2, pot))
                 status = 1
-            if check_upper_sr_buy(prices[i], sr_store[1],
+            if check_upper_sr_buy(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = buy_upper_sr(sr_store, prices[i], pot)
@@ -218,7 +221,7 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                     status = 2
                 continue
         if status == 4:
-            if check_lower_sr_sell(prices[i], sr_store[1],
+            if check_lower_sr_sell(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = sell_lower_sr(sr_store, prices[i], pot)
@@ -233,7 +236,7 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                 status = 6
                 continue
         if status == 5:
-            if check_lower_dev_sell(prices[i], dev_store[1],
+            if check_lower_dev_sell(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = sell_lower_dev(dev_store, prices[i], pot)
@@ -248,13 +251,13 @@ def sr_dev_strat_ttd(params, double[:] prices, double[:] means):
                 status = 6
                 continue
         if status == 6:
-            if check_lower_dev_sell(prices[i], dev_store[1],
+            if check_lower_dev_sell(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = sell_lower_dev(dev_store, prices[i], pot)
                 record.append((i, 2, pot))
                 status = 4
-            if check_lower_sr_sell(prices[i], sr_store[1],
+            if check_lower_sr_sell(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = sell_lower_sr(sr_store, prices[i], pot)
@@ -304,7 +307,7 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
         double dev_fact = params[5]
         double sr_bet = bet[0]
         double dev_bet = bet[1]
-        int sr_tmax = 40, dev_tmax = 40
+        int sr_tmax = 1001, dev_tmax = 1001
 
     sr_store = np.zeros([4], np.float64) # 0: rate, 1: mean, 2: bought/sold, 3: time
     dev_store = np.zeros([4], np.float64)
@@ -336,7 +339,7 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                 status = 1
                 continue
         if status == 1:
-            if check_upper_sr_buy(prices[i], sr_store[1],
+            if check_upper_sr_buy(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = buy_upper_sr(sr_store, prices[i], pot)
@@ -349,7 +352,7 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                 status = 3
                 continue
         if status == 2:
-            if check_upper_dev_buy(prices[i], dev_store[1],
+            if check_upper_dev_buy(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = buy_upper_dev(dev_store, prices[i], pot)
@@ -362,12 +365,12 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                 status = 3
                 continue
         if status == 3:
-            if check_upper_dev_buy(prices[i], dev_store[1],
+            if check_upper_dev_buy(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = buy_upper_dev(dev_store, prices[i], pot)
                 status = 1
-            if check_upper_sr_buy(prices[i], sr_store[1],
+            if check_upper_sr_buy(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = buy_upper_sr(sr_store, prices[i], pot)
@@ -377,7 +380,7 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                     status = 2
                 continue
         if status == 4:
-            if check_lower_sr_sell(prices[i], sr_store[1],
+            if check_lower_sr_sell(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = sell_lower_sr(sr_store, prices[i], pot)
@@ -390,7 +393,7 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                 status = 6
                 continue
         if status == 5:
-            if check_lower_dev_sell(prices[i], dev_store[1],
+            if check_lower_dev_sell(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = sell_lower_dev(dev_store, prices[i], pot)
@@ -403,12 +406,12 @@ def opt_strat_ii(params, double[:] prices, double[:] means, double[:] bet):
                 status = 6
                 continue
         if status == 6:
-            if check_lower_dev_sell(prices[i], dev_store[1],
+            if check_lower_dev_sell(prices[i], dev_store[0],
                              dev_stoploss, dev_takeprofit, i - dev_store[3],
                              dev_tmax):
                 pot = sell_lower_dev(dev_store, prices[i], pot)
                 status = 4
-            if check_lower_sr_sell(prices[i], sr_store[1],
+            if check_lower_sr_sell(prices[i], sr_store[0],
                                   sr_stoploss, sr_takeprofit, i - sr_store[3],
                                   sr_tmax):
                 pot = sell_lower_sr(sr_store, prices[i], pot)

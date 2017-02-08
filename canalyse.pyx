@@ -14,15 +14,55 @@ cdef deviation(double[:] prices, double[:] means):
     return np.sqrt(dev/len(prices))
 
 
-def get_regs(double[:] prices, int reg_win):
+def get_lin_regs_lines(double[:] prices, int reg_win):
+    n = len(prices) - reg_win
+    means = np.empty(n, np.float64)
+    lines = []
+    r = np.array([[j] for j in range(reg_win)])
+    cdef int i
+    for i in range(n):
+        mdl.fit(r, prices[i : reg_win + i])
+        means[i] = mdl.predict([[reg_win - 1]])
+        lines.append(mdl.predict([[i] for i in range(reg_win)]))
+    return means, lines
+
+
+def get_lin_regs(double[:] prices, int reg_win):
     n = len(prices) - reg_win
     means = np.empty(n, np.float64)
     r = np.array([[j] for j in range(reg_win)])
     cdef int i
     for i in range(n):
         mdl.fit(r, prices[i : reg_win + i])
-        means[i] = mdl.predict([[reg_win - 1]])
+        means[i] = mdl.predict(
+                    [[reg_win - 1]])
     return means
+
+
+def get_quad_regs(double[:] prices, int reg_win):
+    n = len(prices) - reg_win
+    means = np.empty(n, np.float64)
+    r = np.array([[j, j**2] for j in range(reg_win)])
+    cdef int i
+    for i in range(n):
+        mdl.fit(r, prices[i : reg_win + i])
+        means[i] = mdl.predict(
+                    [[reg_win - 1, (reg_win - 1)**2]])
+    return means
+
+
+def get_quad_regs_lines(double[:] prices, int reg_win):
+    n = len(prices) - reg_win
+    means = np.empty(n, np.float64)
+    lines = []
+    r = np.array([[j, j**2] for j in range(reg_win)])
+    cdef int i
+    for i in range(n):
+        mdl.fit(r, prices[i : reg_win + i])
+        means[i] = mdl.predict(
+                    [[reg_win - 1, (reg_win - 1)**2]])
+        lines.append(mdl.predict([[i, i**2] for i in range(reg_win)]))
+    return means, lines
 
 
 def get_regs_devs(double[:] prices, int dev_win, int reg_win):

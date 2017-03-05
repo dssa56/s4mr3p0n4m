@@ -2,25 +2,36 @@ import numpy as np
 
 
 def train_bot(double[:] pr, int[:] mm, int[:] ln,
-  double alpha, double gamma, double ep, int n_epochs):
+  double alpha, double gamma, double ep, int n_epochs,
+  double[:,:,:,:,::1] avf):
   cdef:
     double[:,::1] book = np.zeros([4, 2], order='C')
-    double[:,:,:,:,::1] avf = np.ones([2, 10, 11, 3, 13], order='C') * 10
     int[:] state = np.array([mm[0], ln[0], b_to_ind(book), 0], dtype=np.int32)
     int[:] newstate = np.empty_like(state)
-    int i = 0
+    int i
+    int maxi = len(pr) - 1
     int action
     double reward
-    double spread = 0.00015
+    double spread = 0.15
+  rewards = []
   for _ in range(n_epochs):
-    for i in range(len(pr) - 1):
+    i = 0
+    state = np.array([mm[0], ln[0], b_to_ind(book), 0], dtype=np.int32)
+    newstate = np.empty_like(state)
+    book = np.zeros([4, 2], order='C')
+    while i < maxi:
       sort_book(book, state, pr[i])
-      newstate, action, reward = (
+      newstate, action, reward, flag = (
         transition(state, pr, mm, ln, book, avf, i, ep, spread)
       )
-      update(avf, state, newstate, book, action, reward, alpha, gamma)
+      if flag == 0:
+        i += 1
+      newstate[1] = ln[i]
+      newstate[0] = mm[i]
+      rewards.append(reward)
+      ud = update(avf, state, newstate, book, action, reward, alpha, gamma)
       state = newstate[:]
-  return avf
+  return avf, rewards
 
 
 def implament_policy(double[:] pr, int[:] mm, int[:] ln,
@@ -30,17 +41,26 @@ def implament_policy(double[:] pr, int[:] mm, int[:] ln,
     int[:] state = np.array([mm[0], ln[0], b_to_ind(book), 0], dtype=np.int32)
     int[:] newstate = np.empty_like(state)
     double reward
-    double[:] rewards = np.empty([len(pr) - 1])
-    int[:] actions = np.empty([len(pr) - 1], dtype=np.int32)
-  for i in range(len(pr) - 1):
+    int i = 0
+    int maxi = len(pr) - 1
+  actions = []
+  rewards = []
+  uds = []
+  while i < maxi:
     sort_book(book, state, pr[i])
-    newstate, action, reward = (
-     transition(state, pr, mm, ln, book, avf, i, 0, 0.00015)
+    newstate, action, reward, flag = (
+     transition(state, pr, mm, ln, book, avf, i, 0, 0.15)
     )
-    actions[i] = action
-    rewards[i] = reward
+    actions.append(action)
+    rewards.append(reward)
+    if flag == 0:
+      i += 1
+    newstate[1] = ln[i]
+    newstate[0] = mm[i]
+    ud = update(avf, state, newstate, book, action, reward, 0.01, 0.9)
+    uds.append(ud)
     state = newstate[:]
-    return np.asarray(actions), np.asarray(rewards)
+  return actions, rewards, uds
 
 
 def test_sort_book():
@@ -57,16 +77,17 @@ cdef sort_book(double[:,::1] book, int[:] state, double pr):
     int i = 0
     int j = 0
     double[4][2] phdbook
+    int[4] inds = np.empty([4], dtype=np.int32)
   l = np.empty([4])
   for i in range(4):
     if book[i][0] != 0:
       l[i] = -long_rew(book, pr, i, state[3], 0, 0)
     else:
       l[i] = 100
-  l = np.argsort(l)
+  inds = np.argsort(l)
   for i in range(4):
-    phdbook[i][0] = book[l[i]][0]
-    phdbook[i][1] = book[l[i]][1]
+    phdbook[i][0] = book[inds[i]][0]
+    phdbook[i][1] = book[inds[i]][1]
   book[:] = phdbook
 
 
@@ -88,9 +109,10 @@ def test_update():
 cdef update(double[:,:,:,:,::1] avf, int[:] state,
   int[:] newstate, double[:,::1] book, int action, double reward, double alpha,
   double gamma):
-  ud = alpha * (reward + gamma * maxq(avf, newstate, book))
-  ud -= alpha * avf[state[0]][state[1]][state[2]][state[3]][action]
+  ud = alpha * (reward + gamma * get_avf(avf, newstate, maxq(avf, newstate, book)))
+  ud -= alpha * get_avf(avf, state, action)
   avf[state[0]][state[1]][state[2]][state[3]][action] += ud
+  return ud
 
 
 cdef maxq(double[:,:,:,:,::1] avf, int[:] state, double[:,::1] book):
@@ -101,22 +123,22 @@ cdef maxq(double[:,:,:,:,::1] avf, int[:] state, double[:,::1] book):
     avflist[i] = get_avf(avf, state, ava[i])
   return ava[np.argmax(avflist)]
 
-
+"""
 def test_transition():
   cdef:
-    double[:,::1] book = np.array([[1, 1.01], [1, 1.05], [0, 0], [0, 0]], order='C')
-    int[:] state = np.array([0, 7, b_to_ind(book), 2], dtype=np.int32)
+    double[:,::1] book = np.array([[2, 1.02], [0, 0], [0, 0], [0, 0]], order='C',dtype=np.float64)
+    int[:] state = np.array([0, 3, b_to_ind(book), 1], dtype=np.int32)
     double[:] pr = np.array([1.02, 1.03])
-    int[:] mm = np.array([1, 1], dtype=np.int32)
-    int[:] ln = np.array([0, 1], dtype=np.int32)
+    int[:] mm = np.array([0, 0], dtype=np.int32)
+    int[:] ln = np.array([3, 4], dtype=np.int32)
     double[:,:,:,:,::1] avf = np.zeros([2, 10, 11, 3, 13], order='C')
     int i = 0
-    double ep = 0.1
+    double ep = 0.
     double spread = 0.001
-  avf[0][7][b_to_ind(book)][1][9] = 1
+  avf[0][3][b_to_ind(book)][1][1] = 1
   newstate, action, reward = transition(state, pr, mm, ln, book, avf, i, ep, spread)
-  return newstate, action, reward, np.asarray(book)
-
+  return np.asarray(newstate), action, reward, np.asarray(book), np.asarray(state)
+"""
 
 cdef transition(int[:] state, double[:] pr, int[:] mm, int[:] ln,
   double[:,::1] book, double[:,:,:,:,::1] avf, int i, double ep,
@@ -129,6 +151,7 @@ cdef transition(int[:] state, double[:] pr, int[:] mm, int[:] ln,
     int j = 0
     int bestaction
     int action
+    int flag = 0
   for j in range(len(ava)):
     avflist[j] = get_avf(avf, state, ava[j])
   bestaction = ava[np.argmax(avflist)]
@@ -139,12 +162,8 @@ cdef transition(int[:] state, double[:] pr, int[:] mm, int[:] ln,
   reward = update_book(book, state, newstate, action, pr[i], spread)
   newstate[2] = b_to_ind(book)
   if action > 8:
-    newstate[1] = ln[i]
-    newstate[0] = mm[i]
-  else:
-    newstate[1] = ln[i + 1]
-    newstate[0] = mm[i + 1]
-  return newstate, action, reward
+    flag = 1
+  return newstate, action, reward, flag
 
 
 cdef inline get_avf(double[:,:,:,:,::1] avf, int[:] state,
@@ -255,6 +274,10 @@ cdef update_book(double[:,::1] book, int[:] state, int[:] newstate,
       newstate[3] = state[3]
     return r
 
+
+def wbti(book):
+  cdef double[:,::1] b = np.copy(book, order='C')
+  return b_to_ind(b)
 
 cdef int b_to_ind(double[:,::1] book):
   cdef:
